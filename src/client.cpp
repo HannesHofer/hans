@@ -23,6 +23,7 @@
 #include "config.h"
 #include "utility.h"
 
+#include <cstdio>
 #include <string.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -62,6 +63,16 @@ void Client::sendConnectionRequest()
 
     syslog(LOG_DEBUG, "sending connection request");
 
+    // Connection request is at beginning of each connection
+    // we do an initial random (to not always start nounce with same number)
+    // since we do random only once in beginning 64 bit is enough
+    uint64_t randomnonce = Utility::rand();
+    randomnonce << 32;
+    randomnonce += Utility::rand();
+    
+    snprintf((char*)nonce, 24, "012345678901234567890123");
+    //TODO key must be created from password
+    strcpy((char*)key, "0123456789012345678901234567890");
     sendEchoToServer(TunnelHeader::TYPE_CONNECTION_REQUEST, sizeof(Server::ClientConnectData));
 
     state = STATE_CONNECTION_REQUEST_SENT;
@@ -89,10 +100,22 @@ void Client::sendChallengeResponse(int dataLength)
     setTimeout(5000);
 }
 
-bool Client::handleEchoData(const TunnelHeader &header, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq)
+bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq)
 {
     if (realIp != serverIp || !reply)
         return false;
+
+    if (dataLength < sizeof(TunnelHeader))
+        return false;
+
+    unsigned char *ciphertext = (unsigned char *)data;
+    ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
+    crypto_stream_xor(ciphertext, ciphertext , dataLength, nonce, key);
+    
+    dataLength -= sizeof(TunnelHeader);
+
+    TunnelHeader &header = *(TunnelHeader *)echo->receivePayloadBuffer();
+    DEBUG_ONLY(printf("received: type %d, length %d, id %d, seq %d\n", header->type, dataLength - sizeof(TunnelHeader), id, seq));
 
     if (header.magic != Server::magic)
         return false;
@@ -172,7 +195,8 @@ void Client::sendEchoToServer(int type, int dataLength)
     if (maxPolls == 0 && state == STATE_ESTABLISHED)
         setTimeout(KEEP_ALIVE_INTERVAL);
 
-    sendEcho(magic, type, dataLength, serverIp, false, nextEchoId, nextEchoSequence);
+    //pass nonce and key to sendecho
+    sendEcho(magic, type, dataLength, serverIp, false, nextEchoId, nextEchoSequence, nonce, key);
 
     if (changeEchoId)
         nextEchoId = nextEchoId + 38543; // some random prime

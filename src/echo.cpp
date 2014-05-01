@@ -23,7 +23,6 @@
 #include <sys/socket.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
-#include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
@@ -32,17 +31,17 @@
 #include <string.h>
 #include <sys/types.h>
 
-typedef ip IpHeader;
+#include <nacl/crypto_stream.h>
 
-Echo::Echo(int maxPayloadSize)
+Echo::Echo(int maxPayloadSize):
+    isConnectionRequest(false),
+    bufferSize(maxPayloadSize + headerSize()),
+    sendBuffer(new char[bufferSize]),
+    receiveBuffer(new char[bufferSize])
 {
     fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (fd == -1)
         throw Exception("creating icmp socket", true);
-
-    bufferSize = maxPayloadSize + headerSize();
-    sendBuffer = new char[bufferSize];
-    receiveBuffer = new char[bufferSize];
 }
 
 Echo::~Echo()
@@ -58,7 +57,8 @@ int Echo::headerSize()
     return sizeof(IpHeader) + sizeof(EchoHeader);
 }
 
-void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq)
+void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
+                uint16_t seq, const unsigned char *nonce, const unsigned char *key)
 {
     struct sockaddr_in target;
     target.sin_family = AF_INET;
@@ -74,6 +74,15 @@ void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id, uin
     header->seq = htons(seq);
     header->chksum = 0;
     header->chksum = icmpChecksum(sendBuffer + sizeof(IpHeader), payloadLength + sizeof(EchoHeader));
+
+    unsigned char *payloadData = (unsigned char *)sendBuffer;
+    payloadData += sizeof(EchoHeader) + sizeof(IpHeader);
+    crypto_stream_xor(payloadData, payloadData , payloadLength, nonce, key);
+
+    if ( isConnectionRequest ) {
+      int i = 1 + 1; //TODO append 8 byte nonce
+      isConnectionRequest = false;
+    }
 
     int result = sendto(fd, sendBuffer + sizeof(IpHeader), payloadLength + sizeof(EchoHeader), 0, (struct sockaddr *)&target, sizeof(struct sockaddr_in));
     if (result == -1)
@@ -99,12 +108,13 @@ int Echo::receive(uint32_t &realIp, bool &reply, uint16_t &id, uint16_t &seq)
     if ((header->type != 0 && header->type != 8) || header->code != 0)
         return -1;
 
+    int payloadLength = dataLength - sizeof(IpHeader) - sizeof(EchoHeader);
     realIp = ntohl(source.sin_addr.s_addr);
     reply = header->type == 0;
     id = ntohs(header->id);
     seq = ntohs(header->seq);
 
-    return dataLength - sizeof(IpHeader) - sizeof(EchoHeader);
+    return payloadLength;
 }
 
 uint16_t Echo::icmpChecksum(const char *data, int length)

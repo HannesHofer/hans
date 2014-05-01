@@ -25,6 +25,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <syslog.h>
+#include <stdio.h>
 
 using namespace std;
 
@@ -41,6 +42,10 @@ Server::Server(int tunnelMtu, const char *deviceName, const char *passphrase, ui
 
     tun->setIp(this->network + 1, this->network + 2, true);
 
+    snprintf((char*)nonce, 24, "012345678901234567890123");
+    //TODO key must be created from password
+    strcpy((char*)key, "0123456789012345678901234567890");
+    
     dropPrivileges();
 }
 
@@ -143,11 +148,21 @@ void Server::sendReset(ClientData *client)
     sendEchoToClient(client, TunnelHeader::TYPE_RESET_CONNECTION, 0);
 }
 
-bool Server::handleEchoData(const TunnelHeader &header, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq)
+bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq)
 {
     if (reply)
         return false;
 
+    if (dataLength < sizeof(TunnelHeader))
+        return false;
+
+    unsigned char *ciphertext = (unsigned char *)data;
+    ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
+    crypto_stream_xor(ciphertext, ciphertext , dataLength, nonce, key); 
+    dataLength -= sizeof(TunnelHeader);
+
+    TunnelHeader &header = *(TunnelHeader *)echo->receivePayloadBuffer();
+    DEBUG_ONLY(printf("received: type %d, length %d, id %d, seq %d\n", header->type, dataLength - sizeof(TunnelHeader), id, seq));
     if (header.magic != Client::magic)
         return false;
 
@@ -265,7 +280,7 @@ void Server::sendEchoToClient(ClientData *client, int type, int dataLength)
 {
     if (client->maxPolls == 0)
     {
-        sendEcho(magic, type, dataLength, client->realIp, true, client->pollIds.front().id, client->pollIds.front().seq);
+        sendEcho(magic, type, dataLength, client->realIp, true, client->pollIds.front().id, client->pollIds.front().seq, nonce, key);
         return;
     }
 
@@ -275,7 +290,7 @@ void Server::sendEchoToClient(ClientData *client, int type, int dataLength)
         client->pollIds.pop();
 
         DEBUG_ONLY(printf("sending -> %d\n", client->pollIds.size()));
-        sendEcho(magic, type, dataLength, client->realIp, true, echoId.id, echoId.seq);
+        sendEcho(magic, type, dataLength, client->realIp, true, echoId.id, echoId.seq, nonce, key);
         return;
     }
 

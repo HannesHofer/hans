@@ -24,6 +24,7 @@
 #include "auth.h"
 
 #include <vector>
+#include <nacl/crypto_stream.h>
 
 class Client : public Worker
 {
@@ -45,7 +46,8 @@ protected:
         STATE_ESTABLISHED
     };
 
-    virtual bool handleEchoData(const TunnelHeader &header, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq);
+    virtual bool handleEchoData(const char *data, int dataLength,
+                                uint32_t realIp, bool reply, uint16_t id, uint16_t seq);
     virtual void handleTunData(int dataLength, uint32_t sourceIp, uint32_t destIp);
     virtual void handleTimeout();
 

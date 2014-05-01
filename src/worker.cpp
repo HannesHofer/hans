@@ -77,7 +77,9 @@ Worker::~Worker()
     delete tun;
 }
 
-void Worker::sendEcho(const TunnelHeader::Magic &magic, int type, int length, uint32_t realIp, bool reply, uint16_t id, uint16_t seq)
+void Worker::sendEcho(const TunnelHeader::Magic &magic, int type, int length,
+                      uint32_t realIp, bool reply, uint16_t id, uint16_t seq,
+                      const unsigned char *nonce, const unsigned char *key)
 {
     if (length > payloadBufferSize())
         throw Exception("packet too big");
@@ -86,9 +88,10 @@ void Worker::sendEcho(const TunnelHeader::Magic &magic, int type, int length, ui
     header->magic = magic;
     header->type = type;
 
-    DEBUG_ONLY(printf("sending: type %d, length %d, id %d, seq %d\n", type, length, id, seq));
+    DEBUG_ONLY(printf("sending: type %d, length %d, id %d, seq %d", type, length, id, seq));
 
-    echo->send(length + sizeof(TunnelHeader), realIp, reply, id, seq);
+    echo->setConnectionRequest();
+    echo->send(length + sizeof(TunnelHeader), realIp, reply, id, seq, nonce, key);
 }
 
 void Worker::sendToTun(int length)
@@ -153,17 +156,7 @@ void Worker::run()
             int dataLength = echo->receive(ip, reply, id, seq);
             if (dataLength != -1)
             {
-                bool valid = dataLength >= sizeof(TunnelHeader);
-
-                if (valid)
-                {
-                    TunnelHeader *header = (TunnelHeader *)echo->receivePayloadBuffer();
-
-                    DEBUG_ONLY(printf("received: type %d, length %d, id %d, seq %d\n", header->type, dataLength - sizeof(TunnelHeader), id, seq));
-
-                    valid = handleEchoData(*header, dataLength - sizeof(TunnelHeader), ip, reply, id, seq);
-                }
-
+                bool valid = handleEchoData(echo->getReceiveBuffer(), dataLength, ip, reply, id, seq);
                 if (!valid && !reply && answerEcho)
                 {
                     memcpy(echo->sendPayloadBuffer(), echo->receivePayloadBuffer(), dataLength);

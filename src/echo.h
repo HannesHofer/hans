@@ -23,6 +23,7 @@
 #include <string>
 #include <stdint.h>
 
+#include <netinet/ip.h>
 class Echo
 {
 public:
@@ -31,14 +32,17 @@ public:
 
     int getFd() { return fd; }
 
-    void send(int payloadLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq);
+    void send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
+              uint16_t seq, const unsigned char *nonce = NULL,
+              const unsigned char *key = NULL);
     int receive(uint32_t &realIp, bool &reply, uint16_t &id, uint16_t &seq);
 
     char *sendPayloadBuffer() { return sendBuffer + headerSize(); }
     char *receivePayloadBuffer() { return receiveBuffer + headerSize(); }
+    char *getReceiveBuffer() { return receiveBuffer; }
 
     static int headerSize();
-protected:
+    void setConnectionRequest(){ isConnectionRequest = true; }
     struct EchoHeader
     {
         uint8_t type;
@@ -47,9 +51,11 @@ protected:
         uint16_t id;
         uint16_t seq;
     }; // size = 8
-
+    typedef ip IpHeader;
+protected:
     uint16_t icmpChecksum(const char *data, int length);
 
+    bool isConnectionRequest;
     int fd;
     int bufferSize;
     char *sendBuffer, *receiveBuffer;

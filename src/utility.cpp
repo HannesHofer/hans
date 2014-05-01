@@ -22,8 +22,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <ios>
+#include <fstream>
+#include <string.h>
+#include <ios>
 
 using namespace std;
+#define RANDOMREAD 4
 
 string Utility::formatIp(uint32_t ip)
 {
@@ -32,7 +37,7 @@ string Utility::formatIp(uint32_t ip)
     return buffer;
 }
 
-int Utility::rand()
+uint32_t Utility::rand()
 {
     static bool init = false;
     if (!init)
@@ -42,3 +47,12 @@ int Utility::rand()
     }
     return ::rand();
 }
+
+/*
+    uint32_t randombytes;
+    std::ifstream urandom("/dev/urandom", std::ios::in| std::ios::binary);
+    urandom.read((char*)&randombytes, RANDOMREAD);
+    urandom.close();
+
+    return randombytes;
+    */

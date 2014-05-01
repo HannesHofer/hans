@@ -26,11 +26,13 @@
 
 #include <string>
 #include <sys/types.h>
+#include <nacl/crypto_stream.h>
 
 class Worker
 {
 public:
-    Worker(int tunnelMtu, const char *deviceName, bool answerEcho, uid_t uid, gid_t gid);
+    Worker(int tunnelMtu, const char *deviceName, bool answerEcho,
+           uid_t uid, gid_t gid);
     virtual ~Worker();
 
     virtual void run();
@@ -69,17 +71,24 @@ protected:
         };
     }; // size = 5
 
-    virtual bool handleEchoData(const TunnelHeader &header, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq) { return true; }
-    virtual void handleTunData(int dataLength, uint32_t sourceIp, uint32_t destIp) { } // to echoSendPayloadBuffer
+    virtual bool handleEchoData(const char *data, int dataLength,
+                                uint32_t realIp, bool reply, uint16_t id,
+                                uint16_t seq) { return true; }
+    virtual void handleTunData(int dataLength, uint32_t sourceIp,
+                               uint32_t destIp) { } // to echoSendPayloadBuffer
     virtual void handleTimeout() { }
 
-    void sendEcho(const TunnelHeader::Magic &magic, int type, int length, uint32_t realIp, bool reply, uint16_t id, uint16_t seq);
+    void sendEcho(const TunnelHeader::Magic &magic, int type, int length,
+                  uint32_t realIp, bool reply, uint16_t id, uint16_t seq,
+                  const unsigned char *nonce = NULL, const unsigned char *key = NULL);
     void sendToTun(int length); // from echoReceivePayloadBuffer
 
     void setTimeout(Time delta);
 
-    char *echoSendPayloadBuffer() { return echo->sendPayloadBuffer() + sizeof(TunnelHeader); }
-    char *echoReceivePayloadBuffer() { return echo->receivePayloadBuffer() + sizeof(TunnelHeader); }
+    char *echoSendPayloadBuffer() { return echo->sendPayloadBuffer() +
+                                    sizeof(TunnelHeader); }
+    char *echoReceivePayloadBuffer() { return echo->receivePayloadBuffer() +
+                                       sizeof(TunnelHeader); }
 
     int payloadBufferSize() { return tunnelMtu; }
 
@@ -97,6 +106,9 @@ protected:
     bool privilegesDropped;
 
     Time now;
+
+    unsigned char nonce[crypto_stream_NONCEBYTES]; // we use 8byte nounce
+    unsigned char key[crypto_stream_KEYBYTES];
 private:
     int readIcmpData(int *realIp, int *id, int *seq);
 
