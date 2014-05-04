@@ -33,8 +33,7 @@ public:
     int getFd() { return fd; }
 
     void send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
-              uint16_t seq, const unsigned char *nonce = NULL,
-              const unsigned char *key = NULL);
+              uint16_t seq, const uint64_t &nonce, const unsigned char *key);
     int receive(uint32_t &realIp, bool &reply, uint16_t &id, uint16_t &seq);
 
     char *sendPayloadBuffer() { return sendBuffer + headerSize(); }

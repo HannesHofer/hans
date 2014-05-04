@@ -70,7 +70,7 @@ void Client::sendConnectionRequest()
     randomnonce << 32;
     randomnonce += Utility::rand();
     
-    snprintf((char*)nonce, 24, "012345678901234567890123");
+    nonce = 0;
     //TODO key must be created from password
     strcpy((char*)key, "0123456789012345678901234567890");
     sendEchoToServer(TunnelHeader::TYPE_CONNECTION_REQUEST, sizeof(Server::ClientConnectData));
@@ -110,7 +110,7 @@ bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp, b
 
     unsigned char *ciphertext = (unsigned char *)data;
     ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
-    crypto_stream_xor(ciphertext, ciphertext , dataLength, nonce, key);
+    crypto_stream_salsa20_ref_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key);
     
     dataLength -= sizeof(TunnelHeader);
 

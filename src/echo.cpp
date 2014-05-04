@@ -31,7 +31,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include <nacl/crypto_stream.h>
+#include <nacl/crypto_stream_salsa20.h>
 
 Echo::Echo(int maxPayloadSize):
     isConnectionRequest(false),
@@ -58,7 +58,7 @@ int Echo::headerSize()
 }
 
 void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
-                uint16_t seq, const unsigned char *nonce, const unsigned char *key)
+                uint16_t seq, const uint64_t &nonce, const unsigned char *key)
 {
     struct sockaddr_in target;
     target.sin_family = AF_INET;
@@ -77,7 +77,7 @@ void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
 
     unsigned char *payloadData = (unsigned char *)sendBuffer;
     payloadData += sizeof(EchoHeader) + sizeof(IpHeader);
-    crypto_stream_xor(payloadData, payloadData , payloadLength, nonce, key);
+    crypto_stream_salsa20_ref_xor(payloadData, payloadData , payloadLength, (const unsigned char *)&nonce, key);
 
     if ( isConnectionRequest ) {
       int i = 1 + 1; //TODO append 8 byte nonce

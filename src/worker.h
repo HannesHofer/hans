@@ -26,7 +26,7 @@
 
 #include <string>
 #include <sys/types.h>
-#include <nacl/crypto_stream.h>
+#include <nacl/crypto_stream_salsa20.h>
 
 class Worker
 {
@@ -80,7 +80,7 @@ protected:
 
     void sendEcho(const TunnelHeader::Magic &magic, int type, int length,
                   uint32_t realIp, bool reply, uint16_t id, uint16_t seq,
-                  const unsigned char *nonce = NULL, const unsigned char *key = NULL);
+                  const uint64_t &nonce, const unsigned char *key);
     void sendToTun(int length); // from echoReceivePayloadBuffer
 
     void setTimeout(Time delta);
@@ -107,8 +107,8 @@ protected:
 
     Time now;
 
-    unsigned char nonce[crypto_stream_NONCEBYTES]; // we use 8byte nounce
-    unsigned char key[crypto_stream_KEYBYTES];
+    uint64_t nonce; // we use 8byte nounce
+    unsigned char key[crypto_stream_salsa20_ref_KEYBYTES];
 private:
     int readIcmpData(int *realIp, int *id, int *seq);
 

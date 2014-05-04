@@ -24,7 +24,6 @@
 #include "auth.h"
 
 #include <vector>
-#include <nacl/crypto_stream.h>
 
 class Client : public Worker
 {

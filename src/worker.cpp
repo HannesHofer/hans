@@ -79,7 +79,7 @@ Worker::~Worker()
 
 void Worker::sendEcho(const TunnelHeader::Magic &magic, int type, int length,
                       uint32_t realIp, bool reply, uint16_t id, uint16_t seq,
-                      const unsigned char *nonce, const unsigned char *key)
+                      const uint64_t &nonce, const unsigned char *key)
 {
     if (length > payloadBufferSize())
         throw Exception("packet too big");
@@ -160,7 +160,7 @@ void Worker::run()
                 if (!valid && !reply && answerEcho)
                 {
                     memcpy(echo->sendPayloadBuffer(), echo->receivePayloadBuffer(), dataLength);
-                    echo->send(dataLength, ip, true, id, seq);
+                    echo->send(dataLength, ip, true, id, seq, nonce, key);
                 }
             }
         }

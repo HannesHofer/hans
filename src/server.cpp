@@ -42,7 +42,8 @@ Server::Server(int tunnelMtu, const char *deviceName, const char *passphrase, ui
 
     tun->setIp(this->network + 1, this->network + 2, true);
 
-    snprintf((char*)nonce, 24, "012345678901234567890123");
+    //snprintf((char*)nonce, 8, "01234567");
+    nonce = 0;
     //TODO key must be created from password
     strcpy((char*)key, "0123456789012345678901234567890");
     
@@ -158,7 +159,7 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp, b
 
     unsigned char *ciphertext = (unsigned char *)data;
     ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
-    crypto_stream_xor(ciphertext, ciphertext , dataLength, nonce, key); 
+    crypto_stream_salsa20_ref_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key); 
     dataLength -= sizeof(TunnelHeader);
 
     TunnelHeader &header = *(TunnelHeader *)echo->receivePayloadBuffer();
