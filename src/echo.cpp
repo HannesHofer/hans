@@ -64,7 +64,9 @@ void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
     target.sin_family = AF_INET;
     target.sin_addr.s_addr = htonl(realIp);
 
-    if (payloadLength + sizeof(IpHeader) + sizeof(EchoHeader) > bufferSize)
+    int packetlen = payloadLength + sizeof(IpHeader) + sizeof(EchoHeader);
+
+    if (packetlen > bufferSize)
         throw Exception("packet too big");
 
     EchoHeader *header = (EchoHeader *)(sendBuffer + sizeof(IpHeader));
@@ -77,11 +79,18 @@ void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
 
     unsigned char *payloadData = (unsigned char *)sendBuffer;
     payloadData += sizeof(EchoHeader) + sizeof(IpHeader);
-    crypto_stream_salsa20_ref_xor(payloadData, payloadData , payloadLength, (const unsigned char *)&nonce, key);
+    crypto_stream_salsa20_xor(payloadData, payloadData , payloadLength, (const unsigned char *)&nonce, key);
 
-    if ( isConnectionRequest ) {
-      int i = 1 + 1; //TODO append 8 byte nonce
-      isConnectionRequest = false;
+    if (isConnectionRequest) {
+        // TODO ATTENTION little - big endian add seperate function
+        if (packetlen + sizeof(nonce) > bufferSize)
+            throw Exception("Packet to big. caused by nonce");
+
+        strncpy((char*)payloadData + payloadLength,
+                     (const char*)&nonce,
+                     sizeof(nonce) );
+        payloadLength += sizeof(nonce);
+        isConnectionRequest = false;
     }
 
     int result = sendto(fd, sendBuffer + sizeof(IpHeader), payloadLength + sizeof(EchoHeader), 0, (struct sockaddr *)&target, sizeof(struct sockaddr_in));

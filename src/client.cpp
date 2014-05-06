@@ -66,11 +66,10 @@ void Client::sendConnectionRequest()
     // Connection request is at beginning of each connection
     // we do an initial random (to not always start nounce with same number)
     // since we do random only once in beginning 64 bit is enough
-    uint64_t randomnonce = Utility::rand();
-    randomnonce << 32;
-    randomnonce += Utility::rand();
+    nonce = Utility::rand();
+    nonce <<= 32;
+    nonce += Utility::rand();
     
-    nonce = 0;
     //TODO key must be created from password
     strcpy((char*)key, "0123456789012345678901234567890");
     sendEchoToServer(TunnelHeader::TYPE_CONNECTION_REQUEST, sizeof(Server::ClientConnectData));
@@ -100,7 +99,9 @@ void Client::sendChallengeResponse(int dataLength)
     setTimeout(5000);
 }
 
-bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq)
+bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp,
+                            bool reply, uint16_t id, uint16_t seq,
+                            uint64_t &client_nonce, unsigned char *client_key)
 {
     if (realIp != serverIp || !reply)
         return false;
@@ -110,8 +111,10 @@ bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp, b
 
     unsigned char *ciphertext = (unsigned char *)data;
     ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
-    crypto_stream_salsa20_ref_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key);
-    
+    client_nonce = nonce;
+    client_key = key;
+    crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key);
+
     dataLength -= sizeof(TunnelHeader);
 
     TunnelHeader &header = *(TunnelHeader *)echo->receivePayloadBuffer();

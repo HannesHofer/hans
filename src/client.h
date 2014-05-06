@@ -46,7 +46,8 @@ protected:
     };
 
     virtual bool handleEchoData(const char *data, int dataLength,
-                                uint32_t realIp, bool reply, uint16_t id, uint16_t seq);
+                                uint32_t realIp, bool reply, uint16_t id,
+                                uint16_t seq,  uint64_t &nonce, unsigned char *key);
     virtual void handleTunData(int dataLength, uint32_t sourceIp, uint32_t destIp);
     virtual void handleTimeout();
 
@@ -72,6 +73,8 @@ protected:
     uint16_t nextEchoId;
     uint16_t nextEchoSequence;
 
+    uint64_t nonce; // we use 8byte nounce
+    unsigned char key[crypto_stream_salsa20_KEYBYTES];
     State state;
 };
 

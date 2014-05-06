@@ -31,7 +31,8 @@
 class Server : public Worker
 {
 public:
-    Server(int tunnelMtu, const char *deviceName, const char *passphrase, uint32_t network, bool answerEcho, uid_t uid, gid_t gid, int pollTimeout);
+    Server(int tunnelMtu, const char *deviceName, const char *passphrase,
+           uint32_t network, bool answerEcho, uid_t uid, gid_t gid, int pollTimeout);
     virtual ~Server();
 
     // change some time:
@@ -62,7 +63,10 @@ protected:
 
         struct EchoId
         {
-            EchoId(uint16_t id, uint16_t seq) { this->id = id; this->seq = seq; }
+            EchoId(uint16_t id, uint16_t seq) {
+                this->id = id;
+                this->seq = seq;
+            }
 
             uint16_t id;
             uint16_t seq;
@@ -80,12 +84,16 @@ protected:
         State state;
 
         Auth::Challenge challenge;
+        uint64_t nonce; // we use 8byte nounce
+        unsigned char key[crypto_stream_salsa20_KEYBYTES];
     };
 
     typedef std::vector<ClientData> ClientList;
     typedef std::map<uint32_t, int> ClientIpMap;
 
-    virtual bool handleEchoData(const char* data, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq);
+    virtual bool handleEchoData(const char* data, int dataLength, uint32_t realIp,
+                                bool reply, uint16_t id, uint16_t seq,
+                                uint64_t& nonce, unsigned char* key);
     virtual void handleTunData(int dataLength, uint32_t sourceIp, uint32_t destIp);
     virtual void handleTimeout();
 
@@ -93,7 +101,9 @@ protected:
 
     void serveTun(ClientData *client);
 
-    void handleUnknownClient(const TunnelHeader &header, int dataLength, uint32_t realIp, uint16_t echoId, uint16_t echoSeq);
+    void handleUnknownClient(const TunnelHeader &header, int dataLength,
+                             uint32_t realIp, uint16_t echoId, uint16_t echoSeq,
+                             const uint64_t &nonce, const unsigned char *key);
     void removeClient(ClientData *client);
 
     void sendChallenge(ClientData *client);

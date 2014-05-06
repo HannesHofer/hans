@@ -90,7 +90,9 @@ void Worker::sendEcho(const TunnelHeader::Magic &magic, int type, int length,
 
     DEBUG_ONLY(printf("sending: type %d, length %d, id %d, seq %d", type, length, id, seq));
 
-    echo->setConnectionRequest();
+    if (type == TunnelHeader::TYPE_CONNECTION_REQUEST)
+        echo->setConnectionRequest();
+
     echo->send(length + sizeof(TunnelHeader), realIp, reply, id, seq, nonce, key);
 }
 
@@ -156,7 +158,9 @@ void Worker::run()
             int dataLength = echo->receive(ip, reply, id, seq);
             if (dataLength != -1)
             {
-                bool valid = handleEchoData(echo->getReceiveBuffer(), dataLength, ip, reply, id, seq);
+                uint64_t nonce;
+                unsigned char *key;
+                bool valid = handleEchoData(echo->getReceiveBuffer(), dataLength, ip, reply, id, seq, nonce, key);
                 if (!valid && !reply && answerEcho)
                 {
                     memcpy(echo->sendPayloadBuffer(), echo->receivePayloadBuffer(), dataLength);

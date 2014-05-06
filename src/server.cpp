@@ -33,7 +33,8 @@ using namespace std;
 
 const Worker::TunnelHeader::Magic Server::magic("hans");
 
-Server::Server(int tunnelMtu, const char *deviceName, const char *passphrase, uint32_t network, bool answerEcho, uid_t uid, gid_t gid, int pollTimeout)
+Server::Server(int tunnelMtu, const char *deviceName, const char *passphrase,
+               uint32_t network, bool answerEcho, uid_t uid, gid_t gid, int pollTimeout)
     : Worker(tunnelMtu, deviceName, answerEcho, uid, gid), auth(passphrase)
 {
     this->network = network & 0xffffff00;
@@ -42,11 +43,6 @@ Server::Server(int tunnelMtu, const char *deviceName, const char *passphrase, ui
 
     tun->setIp(this->network + 1, this->network + 2, true);
 
-    //snprintf((char*)nonce, 8, "01234567");
-    nonce = 0;
-    //TODO key must be created from password
-    strcpy((char*)key, "0123456789012345678901234567890");
-    
     dropPrivileges();
 }
 
@@ -55,15 +51,20 @@ Server::~Server()
 
 }
 
-void Server::handleUnknownClient(const TunnelHeader &header, int dataLength, uint32_t realIp, uint16_t echoId, uint16_t echoSeq)
+void Server::handleUnknownClient(const TunnelHeader &header, int dataLength,
+                                 uint32_t realIp, uint16_t echoId, uint16_t echoSeq,
+                                 const uint64_t &nonce, const unsigned char *key)
 {
     ClientData client;
     client.realIp = realIp;
     client.maxPolls = 1;
+    client.nonce = nonce;
+    memcpy(&client.key, key, crypto_stream_salsa20_KEYBYTES);
 
     pollReceived(&client, echoId, echoSeq);
 
-    if (header.type != TunnelHeader::TYPE_CONNECTION_REQUEST || dataLength != sizeof(ClientConnectData))
+    if (header.type != TunnelHeader::TYPE_CONNECTION_REQUEST ||
+            dataLength != sizeof(ClientConnectData))
     {
         syslog(LOG_DEBUG, "invalid request %s", Utility::formatIp(realIp).c_str());
         sendReset(&client);
@@ -76,7 +77,9 @@ void Server::handleUnknownClient(const TunnelHeader &header, int dataLength, uin
     client.state = ClientData::STATE_NEW;
     client.tunnelIp = reserveTunnelIp(connectData->desiredIp);
 
-    syslog(LOG_DEBUG, "new client: %s (%s)\n", Utility::formatIp(client.realIp).c_str(), Utility::formatIp(client.tunnelIp).c_str());
+    syslog(LOG_DEBUG, "new client: %s (%s)\n",
+           Utility::formatIp(client.realIp).c_str(),
+           Utility::formatIp(client.tunnelIp).c_str());
 
     if (client.tunnelIp != 0)
     {
@@ -97,7 +100,8 @@ void Server::handleUnknownClient(const TunnelHeader &header, int dataLength, uin
 
 void Server::sendChallenge(ClientData *client)
 {
-    syslog(LOG_DEBUG, "sending challenge to: %s\n", Utility::formatIp(client->realIp).c_str());
+    syslog(LOG_DEBUG, "sending challenge to: %s\n",
+           Utility::formatIp(client->realIp).c_str());
 
     memcpy(echoSendPayloadBuffer(), &client->challenge[0], client->challenge.size());
     sendEchoToClient(client, TunnelHeader::TYPE_CHALLENGE, client->challenge.size());
@@ -107,7 +111,9 @@ void Server::sendChallenge(ClientData *client)
 
 void Server::removeClient(ClientData *client)
 {
-    syslog(LOG_DEBUG, "removing client: %s (%s)\n", Utility::formatIp(client->realIp).c_str(), Utility::formatIp(client->tunnelIp).c_str());
+    syslog(LOG_DEBUG, "removing client: %s (%s)\n",
+           Utility::formatIp(client->realIp).c_str(),
+           Utility::formatIp(client->tunnelIp).c_str());
 
     releaseTunnelIp(client->tunnelIp);
 
@@ -123,7 +129,8 @@ void Server::checkChallenge(ClientData *client, int length)
 {
     Auth::Response rightResponse = auth.getResponse(client->challenge);
 
-    if (length != sizeof(Auth::Response) || memcmp(&rightResponse, echoReceivePayloadBuffer(), length) != 0)
+    if (length != sizeof(Auth::Response) ||
+            memcmp(&rightResponse, echoReceivePayloadBuffer(), length) != 0)
     {
         syslog(LOG_DEBUG, "wrong challenge response\n");
 
@@ -149,7 +156,9 @@ void Server::sendReset(ClientData *client)
     sendEchoToClient(client, TunnelHeader::TYPE_RESET_CONNECTION, 0);
 }
 
-bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp, bool reply, uint16_t id, uint16_t seq)
+bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
+                            bool reply, uint16_t id, uint16_t seq,
+                            uint64_t &nonce, unsigned char *key)
 {
     if (reply)
         return false;
@@ -158,19 +167,33 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp, b
         return false;
 
     unsigned char *ciphertext = (unsigned char *)data;
+    ClientData *client = getClientByRealIp(realIp);
+    if (client == NULL) {
+        int completePacketLength = dataLength + sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
+        nonce = *(uint64_t*)&ciphertext[completePacketLength - sizeof(uint64_t)];
+        key = new unsigned char[crypto_stream_salsa20_KEYBYTES];
+        strncpy((char*)key, "0123456789012345678901234567890", crypto_stream_salsa20_KEYBYTES);
+    } else {´
+        nonce = client->nonce;
+        key = client->key;
+    }
+
     ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
-    crypto_stream_salsa20_ref_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key); 
+    crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key);
     dataLength -= sizeof(TunnelHeader);
 
     TunnelHeader &header = *(TunnelHeader *)echo->receivePayloadBuffer();
-    DEBUG_ONLY(printf("received: type %d, length %d, id %d, seq %d\n", header->type, dataLength - sizeof(TunnelHeader), id, seq));
+    DEBUG_ONLY(printf("received: type %d, length %d, id %d, seq %d\n",
+                      header->type, dataLength - sizeof(TunnelHeader), id, seq));
     if (header.magic != Client::magic)
         return false;
 
-    ClientData *client = getClientByRealIp(realIp);
     if (client == NULL)
     {
-        handleUnknownClient(header, dataLength, realIp, id, seq);
+        // packet contains nonce in last 8 bytes which is no longer needed
+        dataLength -= sizeof(uint64_t);
+        handleUnknownClient(header, dataLength, realIp, id, seq, nonce, key);
+        delete key;
         return true;
     }
 
@@ -281,7 +304,9 @@ void Server::sendEchoToClient(ClientData *client, int type, int dataLength)
 {
     if (client->maxPolls == 0)
     {
-        sendEcho(magic, type, dataLength, client->realIp, true, client->pollIds.front().id, client->pollIds.front().seq, nonce, key);
+        sendEcho(magic, type, dataLength, client->realIp, true,
+                 client->pollIds.front().id, client->pollIds.front().seq,
+                 client->nonce, client->key);
         return;
     }
 
@@ -291,14 +316,16 @@ void Server::sendEchoToClient(ClientData *client, int type, int dataLength)
         client->pollIds.pop();
 
         DEBUG_ONLY(printf("sending -> %d\n", client->pollIds.size()));
-        sendEcho(magic, type, dataLength, client->realIp, true, echoId.id, echoId.seq, nonce, key);
+        sendEcho(magic, type, dataLength, client->realIp, true, echoId.id,
+                 echoId.seq, client->nonce, client->key);
         return;
     }
 
     if (client->pendingPackets.size() == MAX_BUFFERED_PACKETS)
     {
         client->pendingPackets.pop();
-        syslog(LOG_WARNING, "packet dropped to %s", Utility::formatIp(client->tunnelIp).c_str());
+        syslog(LOG_WARNING, "packet dropped to %s",
+               Utility::formatIp(client->tunnelIp).c_str());
     }
 
     DEBUG_ONLY(printf("packet queued: %d bytes\n", dataLength));
@@ -323,7 +350,8 @@ void Server::handleTimeout()
 
         if (client->lastActivity + KEEP_ALIVE_INTERVAL * 2 < now)
         {
-            syslog(LOG_DEBUG, "client timeout: %s\n", Utility::formatIp(client->realIp).c_str());
+            syslog(LOG_DEBUG, "client timeout: %s\n",
+                   Utility::formatIp(client->realIp).c_str());
             removeClient(client);
             i--;
         }

@@ -73,7 +73,8 @@ protected:
 
     virtual bool handleEchoData(const char *data, int dataLength,
                                 uint32_t realIp, bool reply, uint16_t id,
-                                uint16_t seq) { return true; }
+                                uint16_t seq, uint64_t& nonce, unsigned char* key) 
+                                { return true; }
     virtual void handleTunData(int dataLength, uint32_t sourceIp,
                                uint32_t destIp) { } // to echoSendPayloadBuffer
     virtual void handleTimeout() { }
@@ -106,9 +107,6 @@ protected:
     bool privilegesDropped;
 
     Time now;
-
-    uint64_t nonce; // we use 8byte nounce
-    unsigned char key[crypto_stream_salsa20_ref_KEYBYTES];
 private:
     int readIcmpData(int *realIp, int *id, int *seq);
 
