@@ -24,6 +24,7 @@
 #include <string>
 #include <string.h>
 #include <stdint.h>
+#include <nacl/crypto_hash_sha256.h>
 
 class Auth
 {
@@ -40,10 +41,13 @@ public:
 
     Challenge generateChallenge(int length) const;
     Response getResponse(const Challenge &challenge) const;
+    unsigned char *getEncryptionKey() {return encryptionkey;}
+    int getEncryptionKeyLength() { return crypto_hash_sha256_BYTES; }
 
 protected:
     std::string passphrase;
     std::string challenge;
+    unsigned char encryptionkey[crypto_hash_sha256_BYTES];
 };
 
 #endif

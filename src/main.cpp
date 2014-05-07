@@ -116,7 +116,6 @@ int main(int argc, char *argv[])
                 device = optarg;
                 break;
             case 'p':
-                changeEchoSeq = true; //enforce
                 password = strdup(optarg);
                 memset(optarg, 0, strlen(optarg));
                 break;
@@ -156,6 +155,9 @@ int main(int argc, char *argv[])
                 return 1;
         }
     }
+
+    if (isClient && strcmp(password, "") != 0)
+        changeEchoSeq = true; //enforce. needed for encryption
 
     mtu -= Echo::headerSize() + Worker::headerSize();
 

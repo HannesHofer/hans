@@ -26,6 +26,11 @@
 Auth::Auth(const char *passphrase)
 {
     this->passphrase = passphrase;
+
+    //TODO evalute this for better keystreching
+    crypto_hash_sha256(this->encryptionkey, (const unsigned char*)passphrase, this->passphrase.length());
+    for (int i=0;i<65535;++i)
+        crypto_hash_sha256(this->encryptionkey, (const unsigned char*)this->encryptionkey, crypto_hash_sha256_BYTES);
 }
 
 Auth::Response Auth::getResponse(const Challenge &challenge) const

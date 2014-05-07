@@ -69,9 +69,7 @@ void Client::sendConnectionRequest()
     nonce = Utility::rand();
     nonce <<= 32;
     nonce += Utility::rand();
-    
-    //TODO key must be created from password
-    strcpy((char*)key, "0123456789012345678901234567890");
+    memcpy(key, auth.getEncryptionKey(), auth.getEncryptionKeyLength());
     sendEchoToServer(TunnelHeader::TYPE_CONNECTION_REQUEST, sizeof(Server::ClientConnectData));
 
     state = STATE_CONNECTION_REQUEST_SENT;
