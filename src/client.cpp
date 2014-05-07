@@ -111,6 +111,7 @@ bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp,
 
     unsigned char *ciphertext = (unsigned char *)data;
     ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
+    nonce += 1;
     client_nonce = nonce;
     client_key = key;
     crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key);
@@ -198,7 +199,7 @@ void Client::sendEchoToServer(int type, int dataLength)
     if (maxPolls == 0 && state == STATE_ESTABLISHED)
         setTimeout(KEEP_ALIVE_INTERVAL);
 
-    //pass nonce and key to sendecho
+    nonce += 1;
     sendEcho(magic, type, dataLength, serverIp, false, nextEchoId, nextEchoSequence, nonce, key);
 
     if (changeEchoId)

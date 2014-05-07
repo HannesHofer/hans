@@ -174,6 +174,7 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
         key = new unsigned char[crypto_stream_salsa20_KEYBYTES];
         strncpy((char*)key, "0123456789012345678901234567890", crypto_stream_salsa20_KEYBYTES);
     } else {
+        client->nonce += 1;
         nonce = client->nonce;
         key = client->key;
     }
@@ -304,6 +305,7 @@ void Server::sendEchoToClient(ClientData *client, int type, int dataLength)
 {
     if (client->maxPolls == 0)
     {
+        client->nonce += 1;
         sendEcho(magic, type, dataLength, client->realIp, true,
                  client->pollIds.front().id, client->pollIds.front().seq,
                  client->nonce, client->key);
@@ -312,6 +314,7 @@ void Server::sendEchoToClient(ClientData *client, int type, int dataLength)
 
     if (client->pollIds.size() != 0)
     {
+        client->nonce += 1;
         ClientData::EchoId echoId = client->pollIds.front();
         client->pollIds.pop();
 

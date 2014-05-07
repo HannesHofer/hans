@@ -66,7 +66,7 @@ static void usage()
         "  -f            Run in foreground.\n"
         "  -v            Print debug information.\n"
         "  -r            Respond to ordinary pings. Only in server mode.\n"
-        "  -p password   Use a password.\n"
+        "  -p password   Use a password.(-q is enforced)\n"
         "  -u username   Set the user under which the program should run.\n"
         "  -d device     Use the given tun device.\n"
         "  -m mtu        Use this mtu to calculate the tunnel mtu.\n"
@@ -116,6 +116,7 @@ int main(int argc, char *argv[])
                 device = optarg;
                 break;
             case 'p':
+                changeEchoSeq = true; //enforce
                 password = strdup(optarg);
                 memset(optarg, 0, strlen(optarg));
                 break;
