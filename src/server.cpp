@@ -173,7 +173,7 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
         nonce = *(uint64_t*)&ciphertext[completePacketLength - sizeof(uint64_t)];
         key = new unsigned char[crypto_stream_salsa20_KEYBYTES];
         strncpy((char*)key, "0123456789012345678901234567890", crypto_stream_salsa20_KEYBYTES);
-    } else {´
+    } else {
         nonce = client->nonce;
         key = client->key;
     }
