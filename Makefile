@@ -15,8 +15,8 @@ build_dir:
 
 tunemu.o: directories build/tunemu.o
 
-hans: build/tun.o build/sha1.o build/main.o build/client.o build/server.o build/auth.o build/worker.o build/time.o build/tun_dev.o build/echo.o build/exception.o build/utility.o
-	$(GPP) -o hans build/tun.o build/sha1.o build/main.o build/client.o build/server.o build/auth.o build/worker.o build/time.o build/tun_dev.o build/echo.o build/exception.o build/utility.o -lnacl $(LDFLAGS)
+hans: build/tun.o build/main.o build/client.o build/server.o build/auth.o build/worker.o build/time.o build/tun_dev.o build/echo.o build/exception.o build/utility.o
+	$(GPP) -o hans build/tun.o build/main.o build/client.o build/server.o build/auth.o build/worker.o build/time.o build/tun_dev.o build/echo.o build/exception.o build/utility.o -lnacl $(LDFLAGS)
 
 build/utility.o: src/utility.cpp src/utility.h
 	$(GPP) -c src/utility.cpp -o $@ -o $@ $(CFLAGS)
@@ -33,9 +33,6 @@ build/tun.o: src/tun.cpp src/tun.h src/exception.h src/utility.h src/tun_dev.h
 build/tun_dev.o:
 	$(GCC) -c $(TUN_DEV_FILE) -o build/tun_dev.o -o $@ $(CFLAGS)
 
-build/sha1.o: src/sha1.cpp src/sha1.h
-	$(GPP) -c src/sha1.cpp -o $@ $(CFLAGS)
-
 build/main.o: src/main.cpp src/client.h src/server.h src/exception.h src/worker.h src/auth.h src/time.h src/echo.h src/tun.h src/tun_dev.h
 	$(GPP) -c src/main.cpp -o $@ $(CFLAGS)
 
@@ -45,7 +42,7 @@ build/client.o: src/client.cpp src/client.h src/server.h src/exception.h src/con
 build/server.o: src/server.cpp src/server.h src/client.h src/utility.h src/config.h src/worker.h src/auth.h src/time.h src/echo.h src/tun.h src/tun_dev.h
 	$(GPP) -c src/server.cpp -o $@ $(CFLAGS)
 
-build/auth.o: src/auth.cpp src/auth.h src/sha1.h src/utility.h
+build/auth.o: src/auth.cpp src/auth.h src/utility.h
 	$(GPP) -c src/auth.cpp -o $@ $(CFLAGS)
 
 build/worker.o: src/worker.cpp src/worker.h src/tun.h src/exception.h src/time.h src/echo.h src/tun_dev.h src/config.h

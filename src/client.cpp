@@ -112,7 +112,8 @@ bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp,
     nonce += 1;
     client_nonce = nonce;
     client_key = key;
-    crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key);
+    crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength,
+                              (const unsigned char *)&nonce, key);
 
     dataLength -= sizeof(TunnelHeader);
 

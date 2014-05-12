@@ -180,7 +180,8 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
     }
 
     ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
-    crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength, (const unsigned char *)&nonce, key);
+    crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength,
+                              (const unsigned char *)&nonce, key);
     dataLength -= sizeof(TunnelHeader);
 
     TunnelHeader &header = *(TunnelHeader *)echo->receivePayloadBuffer();

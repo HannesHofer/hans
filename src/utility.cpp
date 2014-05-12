@@ -26,11 +26,12 @@
 #include <fstream>
 #include <string.h>
 #include <ios>
+#include <arpa/inet.h>
 
 using namespace std;
 #define RANDOMREAD 4
 
-string Utility::formatIp(uint32_t ip)
+string Utility::formatIp(const uint32_t &ip)
 {
     char buffer[16];
     sprintf(buffer, "%d.%d.%d.%d", (ip >> 24) & 0xff, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff);
@@ -47,6 +48,18 @@ uint32_t Utility::rand()
     }
     return ::rand();
 }
+
+uint64_t Utility::htonll(const uint64_t &value) {
+    int num = 42;
+    if (*(char *)&num == 42) {
+        uint32_t high_part = htonl((uint32_t)(value >> 32));
+        uint32_t low_part = htonl((uint32_t)(value & 0xFFFFFFFFLL));
+        return (((uint64_t)low_part) << 32) | high_part;
+    } else {
+        return value;
+    }
+}
+
 
 /*
     uint32_t randombytes;

@@ -18,7 +18,6 @@
  */
 
 #include "auth.h"
-#include "sha1.h"
 #include "utility.h"
 
 #include <arpa/inet.h>
@@ -35,17 +34,14 @@ Auth::Auth(const char *passphrase)
 
 Auth::Response Auth::getResponse(const Challenge &challenge) const
 {
-    SHA1 hasher;
-
     Response response;
 
-    hasher << passphrase.c_str();
-    hasher.Input(&challenge[0], challenge.size());
+    int inputlen = passphrase.length() + challenge.size();
+    unsigned char input[inputlen];
+    memcpy(input, passphrase.c_str(), passphrase.length());
+    memcpy(input + passphrase.length(), &challenge[0], challenge.size());
 
-    hasher.Result((unsigned int *)response.data);
-
-    for (int i = 0; i < 5; i++)
-        response.data[i] = htonl(response.data[i]);
+    crypto_hash_sha256(&response.data[0], input, inputlen);
 
     return response;
 }

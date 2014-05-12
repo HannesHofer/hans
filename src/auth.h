@@ -33,7 +33,7 @@ public:
 
     struct Response
     {
-        uint32_t data[5];
+        unsigned char data[crypto_hash_sha256_BYTES];
         bool operator==(const Response &other) const { return memcmp(this, &other, sizeof(Response)) == 0; }
     };
 

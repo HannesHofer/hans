@@ -26,8 +26,9 @@
 class Utility
 {
 public:
-    static std::string formatIp(uint32_t ip);
+    static std::string formatIp(const uint32_t& ip);
     static uint32_t rand();
+    static uint64_t htonll(const uint64_t &value);
 };
 
 #endif

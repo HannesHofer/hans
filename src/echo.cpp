@@ -19,6 +19,7 @@
 
 #include "echo.h"
 #include "exception.h"
+#include "utility.h"
 
 #include <sys/socket.h>
 #include <netinet/in_systm.h>
@@ -79,7 +80,8 @@ void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
 
     unsigned char *payloadData = (unsigned char *)sendBuffer;
     payloadData += sizeof(EchoHeader) + sizeof(IpHeader);
-    crypto_stream_salsa20_xor(payloadData, payloadData , payloadLength, (const unsigned char *)&nonce, key);
+    crypto_stream_salsa20_xor(payloadData, payloadData , payloadLength,
+                              (const unsigned char *)&nonce, key);
 
     if (isConnectionRequest) {
         // TODO ATTENTION little - big endian add seperate function
