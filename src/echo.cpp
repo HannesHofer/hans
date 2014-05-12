@@ -84,12 +84,11 @@ void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
                               (const unsigned char *)&nonce, key);
 
     if (isConnectionRequest) {
-        // TODO ATTENTION little - big endian add seperate function
         if (packetlen + sizeof(nonce) > bufferSize)
             throw Exception("Packet to big. caused by nonce");
-
+        const uint64_t tmp_nonce = Utility::htonll(nonce);
         strncpy((char*)payloadData + payloadLength,
-                     (const char*)&nonce,
+                     (const char*)&tmp_nonce,
                      sizeof(nonce) );
         payloadLength += sizeof(nonce);
         isConnectionRequest = false;
