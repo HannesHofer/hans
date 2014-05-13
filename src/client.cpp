@@ -109,7 +109,7 @@ bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp,
 
     unsigned char *ciphertext = (unsigned char *)data;
     ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
-    nonce += 1;
+    nonce += nextEchoSequence - lastSequence;
     client_nonce = nonce;
     client_key = key;
     crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength,
@@ -201,10 +201,12 @@ void Client::sendEchoToServer(int type, int dataLength)
     nonce += 1;
     sendEcho(magic, type, dataLength, serverIp, false, nextEchoId, nextEchoSequence, nonce, key);
 
+    lastSequence = nextEchoSequence;
+    
     if (changeEchoId)
         nextEchoId = nextEchoId + 38543; // some random prime
     if (changeEchoSeq)
-        nextEchoSequence = nextEchoSequence + 38543; // some random prime
+        nextEchoSequence = nextEchoSequence + 1; // use +1 to simulte linux
 }
 
 void Client::startPolling()

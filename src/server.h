@@ -63,10 +63,7 @@ protected:
 
         struct EchoId
         {
-            EchoId(uint16_t id, uint16_t seq) {
-                this->id = id;
-                this->seq = seq;
-            }
+            EchoId(uint16_t _id, uint16_t _seq) : id(_id), seq(_seq) {}
 
             uint16_t id;
             uint16_t seq;
@@ -86,6 +83,7 @@ protected:
         Auth::Challenge challenge;
         uint64_t nonce; // we use 8byte nounce
         unsigned char key[crypto_stream_salsa20_KEYBYTES];
+        uint16_t lastseq;
     };
 
     typedef std::vector<ClientData> ClientList;

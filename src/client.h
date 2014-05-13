@@ -76,6 +76,8 @@ protected:
     uint64_t nonce; // we use 8byte nounce
     unsigned char key[crypto_stream_salsa20_KEYBYTES];
     State state;
+private:
+    uint16_t lastSequence;
 };
 
 #endif

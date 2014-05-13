@@ -59,6 +59,7 @@ void Server::handleUnknownClient(const TunnelHeader &header, int dataLength,
     client.realIp = realIp;
     client.maxPolls = 1;
     client.nonce = nonce;
+    client.lastseq = echoSeq;
     memcpy(&client.key, key, crypto_stream_salsa20_KEYBYTES);
 
     pollReceived(&client, echoId, echoSeq);
@@ -175,7 +176,8 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
         key = new unsigned char[crypto_stream_salsa20_KEYBYTES];
         memcpy(key, auth.getEncryptionKey(), auth.getEncryptionKeyLength());
     } else {
-        client->nonce += 1;
+        client->nonce += seq - client->lastseq;
+        client->lastseq = seq;
         nonce = client->nonce;
         key = client->key;
     }
@@ -316,9 +318,9 @@ void Server::sendEchoToClient(ClientData *client, int type, int dataLength)
 
     if (client->pollIds.size() != 0)
     {
-        client->nonce += 1;
         ClientData::EchoId echoId = client->pollIds.front();
         client->pollIds.pop();
+        client->nonce += 1;
 
         DEBUG_ONLY(printf("sending -> %d\n", client->pollIds.size()));
         sendEcho(magic, type, dataLength, client->realIp, true, echoId.id,
