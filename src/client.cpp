@@ -139,6 +139,9 @@ bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp,
         case TunnelHeader::TYPE_CHALLENGE:
             if (state == STATE_CONNECTION_REQUEST_SENT)
             {
+                // echo ID could change in this state when our ID is already used.
+                // in this case switch to Server determined ID
+                nextEchoId = id;
                 syslog(LOG_DEBUG, "challenge received");
                 sendChallengeResponse(dataLength);
                 return true;
@@ -203,8 +206,8 @@ void Client::sendEchoToServer(int type, int dataLength)
 
     lastSequence = nextEchoSequence;
     
-    if (changeEchoId)
-        nextEchoId = nextEchoId + 38543; // some random prime
+    //if (changeEchoId)
+    //    nextEchoId = nextEchoId + 38543; // some random prime
     if (changeEchoSeq)
         nextEchoSequence = nextEchoSequence + 1; // use +1 to simulte linux
 }

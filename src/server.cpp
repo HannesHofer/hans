@@ -60,7 +60,16 @@ void Server::handleUnknownClient(const TunnelHeader &header, int dataLength,
     client.maxPolls = 1;
     client.nonce = nonce;
     client.lastseq = echoSeq;
+    client.ID = echoId;
     memcpy(&client.key, key, crypto_stream_salsa20_KEYBYTES);
+
+    // security check .. return when max clients is reached
+    if (clientIDMap.size() >= 65535) // max uint16_t
+        return;
+
+    // EchoID is unique identifier for client. change it when same already exists
+    while (getClientByID(echoId) != NULL)
+        echoId = Utility::rand();
 
     pollReceived(&client, echoId, echoSeq);
 
@@ -89,7 +98,7 @@ void Server::handleUnknownClient(const TunnelHeader &header, int dataLength,
 
         // add client to list
         clientList.push_back(client);
-        clientRealIpMap[realIp] = clientList.size() - 1;
+        clientIDMap[echoId] = clientList.size() - 1;
         clientTunnelIpMap[client.tunnelIp] = clientList.size() - 1;
     }
     else
@@ -118,9 +127,9 @@ void Server::removeClient(ClientData *client)
 
     releaseTunnelIp(client->tunnelIp);
 
-    int nr = clientRealIpMap[client->realIp];
+    int nr = clientIDMap[client->ID];
 
-    clientRealIpMap.erase(client->realIp);
+    clientIDMap.erase(client->ID);
     clientTunnelIpMap.erase(client->tunnelIp);
 
     clientList.erase(clientList.begin() + nr);
@@ -168,7 +177,7 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
         return false;
 
     unsigned char *ciphertext = (unsigned char *)data;
-    ClientData *client = getClientByRealIp(realIp);
+    ClientData *client = getClientByID(id);
     if (client == NULL) {
         int completePacketLength = dataLength + sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
         nonce = *(uint64_t*)&ciphertext[completePacketLength - sizeof(uint64_t)];
@@ -258,10 +267,10 @@ Server::ClientData *Server::getClientByTunnelIp(uint32_t ip)
     return &clientList[clientMapIterator->second];
 }
 
-Server::ClientData *Server::getClientByRealIp(uint32_t ip)
+Server::ClientData *Server::getClientByID(uint16_t id)
 {
-    ClientIpMap::iterator clientMapIterator = clientRealIpMap.find(ip);
-    if (clientMapIterator == clientRealIpMap.end())
+    ClientIDMap::iterator clientMapIterator = clientIDMap.find(id);
+    if (clientMapIterator == clientIDMap.end())
         return NULL;
 
     return &clientList[clientMapIterator->second];

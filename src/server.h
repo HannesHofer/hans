@@ -84,10 +84,12 @@ protected:
         uint64_t nonce; // we use 8byte nounce
         unsigned char key[crypto_stream_salsa20_KEYBYTES];
         uint16_t lastseq;
+        uint16_t ID;
     };
 
     typedef std::vector<ClientData> ClientList;
     typedef std::map<uint32_t, int> ClientIpMap;
+    typedef std::map<uint16_t, int> ClientIDMap;
 
     virtual bool handleEchoData(const char* data, int dataLength, uint32_t realIp,
                                 bool reply, uint16_t id, uint16_t seq,
@@ -116,7 +118,7 @@ protected:
     void releaseTunnelIp(uint32_t tunnelIp);
 
     ClientData *getClientByTunnelIp(uint32_t ip);
-    ClientData *getClientByRealIp(uint32_t ip);
+    ClientData *getClientByID(uint16_t id);
 
     Auth auth;
 
@@ -127,7 +129,7 @@ protected:
     Time pollTimeout;
 
     ClientList clientList;
-    ClientIpMap clientRealIpMap;
+    ClientIDMap clientIDMap;
     ClientIpMap clientTunnelIpMap;
 };
 
