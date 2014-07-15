@@ -91,7 +91,7 @@ protected:
     typedef std::map<uint32_t, int> ClientIpMap;
     typedef std::map<uint16_t, int> ClientIDMap;
 
-    virtual bool handleEchoData(const char* data, int dataLength, uint32_t realIp,
+    virtual bool handleEchoData(char* data, int dataLength, uint32_t realIp,
                                 bool reply, uint16_t id, uint16_t seq,
                                 uint64_t& nonce, unsigned char* key);
     virtual void handleTunData(int dataLength, uint32_t sourceIp, uint32_t destIp);

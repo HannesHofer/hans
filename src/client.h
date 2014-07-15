@@ -45,7 +45,7 @@ protected:
         STATE_ESTABLISHED
     };
 
-    virtual bool handleEchoData(const char *data, int dataLength,
+    virtual bool handleEchoData(char *data, int dataLength,
                                 uint32_t realIp, bool reply, uint16_t id,
                                 uint16_t seq,  uint64_t &nonce, unsigned char *key);
     virtual void handleTunData(int dataLength, uint32_t sourceIp, uint32_t destIp);

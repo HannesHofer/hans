@@ -164,7 +164,7 @@ void Worker::run()
                 if (!valid && !reply && answerEcho)
                 {
                     memcpy(echo->sendPayloadBuffer(), echo->receivePayloadBuffer(), dataLength);
-                    echo->send(dataLength, ip, true, id, seq, nonce, key);
+                    echo->send(dataLength, ip, true, id, seq, -1, NULL);
                 }
             }
         }

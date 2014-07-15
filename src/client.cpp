@@ -97,7 +97,7 @@ void Client::sendChallengeResponse(int dataLength)
     setTimeout(5000);
 }
 
-bool Client::handleEchoData(const char *data, int dataLength, uint32_t realIp,
+bool Client::handleEchoData(char *data, int dataLength, uint32_t realIp,
                             bool reply, uint16_t id, uint16_t seq,
                             uint64_t &client_nonce, unsigned char *client_key)
 {

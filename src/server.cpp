@@ -166,7 +166,7 @@ void Server::sendReset(ClientData *client)
     sendEchoToClient(client, TunnelHeader::TYPE_RESET_CONNECTION, 0);
 }
 
-bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
+bool Server::handleEchoData(char* data, int dataLength, uint32_t realIp,
                             bool reply, uint16_t id, uint16_t seq,
                             uint64_t &nonce, unsigned char *key)
 {
@@ -192,6 +192,8 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
     }
 
     ciphertext += sizeof(Echo::EchoHeader) + sizeof(Echo::IpHeader);
+    unsigned char oldpayload[dataLength];
+    memcpy(oldpayload, ciphertext, dataLength);
     crypto_stream_salsa20_xor(ciphertext, ciphertext , dataLength,
                               (const unsigned char *)&nonce, key);
     dataLength -= sizeof(TunnelHeader);
@@ -199,8 +201,12 @@ bool Server::handleEchoData(const char* data, int dataLength, uint32_t realIp,
     TunnelHeader &header = *(TunnelHeader *)echo->receivePayloadBuffer();
     DEBUG_ONLY(printf("received: type %d, length %d, id %d, seq %d\n",
                       header->type, dataLength - sizeof(TunnelHeader), id, seq));
-    if (header.magic != Client::magic)
-        return false;
+
+     if (header.magic != Client::magic)
+     {
+         memcpy(ciphertext, oldpayload, dataLength + sizeof(TunnelHeader));
+         return false;
+     }
 
     if (client == NULL)
     {
