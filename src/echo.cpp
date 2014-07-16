@@ -76,13 +76,15 @@ void Echo::send(int payloadLength, uint32_t realIp, bool reply, uint16_t id,
     header->id = htons(id);
     header->seq = htons(seq);
     header->chksum = 0;
-    header->chksum = icmpChecksum(sendBuffer + sizeof(IpHeader), payloadLength + sizeof(EchoHeader));
 
     unsigned char *payloadData = (unsigned char *)sendBuffer;
     payloadData += sizeof(EchoHeader) + sizeof(IpHeader);
     if (nonce != -1 && key != NULL) 
         crypto_stream_salsa20_xor(payloadData, payloadData , payloadLength,
                               (const unsigned char *)&nonce, key);
+
+    // checksum must be made after encryption
+    header->chksum = icmpChecksum(sendBuffer + sizeof(IpHeader), payloadLength + sizeof(EchoHeader));
 
     if (isConnectionRequest) {
         if (packetlen + sizeof(nonce) > bufferSize)
